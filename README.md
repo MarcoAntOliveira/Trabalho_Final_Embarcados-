@@ -1,136 +1,78 @@
 ### Objetivo
-Este projeto dedica-se a simualr no tinker cad o sistena eletronico de um drone , simulando apens o controle de arfagem , devido as capcidades limitadas do microcontorlador usado, eu será um arduino.
-´´´ c
-#include <Button.h>
-#include  <Encoder.h>
+# Projeto de Controle PID Analógico com Arduino
 
-const int PWM0 =  6;
-const int PWM1 =  5;
-const int BTN_MEM_PIN[] = {7,8};
-const int READY =  13;
-int currentPos = 0;
-int newPosition = 0;
-int runningSpeed = 0;
-long distanceTogo = 0;
+Este projeto implementa um **sistema de controle de tensão analógico** usando um **controlador PID analógico com amplificadores operacionais**, uma **planta RC (resistor + capacitor)** e um **Arduino UNO** para monitoramento da resposta do sistema.
 
+---
 
-Encoder myEnc(2, 3);
-long oldPosition  = -999;
-long targetPosition = 0;
-#define ACCURACY 7
+## 🎯 Objetivo
 
-#define DEBOUNCE_MS 20
-#define PULLUP true
-#define INVERT true
+Controlar a tensão de saída de uma carga RC utilizando um controlador PID analógico, com o auxílio do Arduino para leitura e visualização da saída do sistema em tempo real.
 
+---
 
-#define motorSpeed 255
-#define motorSpeed1 70
-#define motorSpeed2 30
+## ⚙️ Componentes Utilizados
 
+- 1 × Arduino UNO
+- 3 × Amplificadores operacionais (op-amp)
+- 1 × Carga RC (resistor + capacitor)
+- Vários resistores e capacitores para configurar as constantes do PID
+- Fonte de alimentação (pilhas ou banco de energia)
+- Jumpers e protoboard
+- Potenciômetro ou divisor de tensão para setpoint (referência)
 
-Button btnPos1(BTN_MEM_PIN[0], PULLUP, INVERT, DEBOUNCE_MS);
-Button btnPos2(BTN_MEM_PIN[1], PULLUP, INVERT, DEBOUNCE_MS);
+---
 
+## 🧠 Estrutura do Sistema
 
+### 🔲 1. **Controlador PID Analógico**
 
-long memPosition[] = {0,0};
+Implementado com três amplificadores operacionais:
+- **Proporcional (P)**: resistor em malha direta.
+- **Integrador (I)**: capacitor na realimentação.
+- **Derivativo (D)**: capacitor na entrada.
 
+A combinação desses três blocos produz um sinal de controle analógico baseado no erro entre a tensão de referência e a saída da planta.
+
+---
+
+### 🔲 2. **Planta: Circuito RC**
+
+Simula um sistema físico simples onde:
+- A tensão de entrada (do PID) controla a carga no capacitor.
+- A saída é a tensão no capacitor, que representa a variável controlada.
+
+---
+
+### 🔲 3. **Arduino UNO**
+
+- Lê a **tensão da planta** (pino A0).
+- Envia os dados ao **monitor serial** para acompanhamento em tempo real.
+- (Opcional) Pode ser utilizado futuramente para aplicar controle digital, PWM ou comunicação com Python/PC.
+
+---
+
+## 🖥️ Código Arduino
+
+```cpp
+const int sensorPin = A0;
+float Vref = 5.0;
 
 void setup() {
-  pinMode(PWM0, OUTPUT);
-  pinMode(PWM1, OUTPUT);
-  analogWrite(PWM0, 0);
-  analogWrite(PWM1, 0);
-  pinMode(READY, OUTPUT);
-
-
   Serial.begin(9600);
 }
 
 void loop() {
+  int raw = analogRead(sensorPin);
+  float voltage = (raw / 1023.0) * Vref;
 
-  memPosition[0] = 0;
-  memPosition[1] = -550;
+  Serial.print("Tensao: ");
+  Serial.print(voltage);
+  Serial.println(" V");
 
-
-  btnPos1.read();
-  btnPos2.read();
-
-
-    if(btnPos1.wasReleased()) {
-    Serial.println("btnPos1");
-    targetPosition = memPosition[0] ;
-
-  }
-  if(btnPos2.wasReleased()) {
-    Serial.println("btnPos2");
-    targetPosition = memPosition[1] ;
-   }
-
-  long newPosition = myEnc.read();
-    distanceTogo = (abs(targetPosition - newPosition));
-
-  if (newPosition != oldPosition) {
-    oldPosition = newPosition;
-    Serial.println(newPosition);
-  }
-
-  if( newPosition != targetPosition) {
-
-    Serial.print("Target/Actual:");Serial.print(targetPosition);Serial.print(" / ");Serial.print(newPosition);Serial.print(" [");Serial.print(abs(targetPosition - newPosition));Serial.println("]");
-    Serial.println(distanceTogo);
-
-    if(targetPosition < newPosition) {
-      retractActuator();
-
-    }
-    if(targetPosition > newPosition) {
-      extendActuator();
-    }
-    if( (targetPosition == newPosition) || abs(targetPosition - newPosition) <= ACCURACY) {
-      stopActuator();
-    }
-
-     if(distanceTogo <= 50 ) {
-     runningSpeed = motorSpeed2;
-     }
-
-     if (51 <= distanceTogo && distanceTogo <= 150)  {
-     runningSpeed = motorSpeed1;
-  }
-     if(distanceTogo >= 151){
-     runningSpeed = motorSpeed;
-  }
-  }
+  delay(100);
 }
-
-
-void retractActuator() {
-  analogWrite(PWM0, 0);
-  analogWrite(PWM1,runningSpeed);
-  digitalWrite(READY, LOW);
-
-  }
-
-void extendActuator() {
-  analogWrite(PWM0,runningSpeed);
-  analogWrite(PWM1, 0);
-  digitalWrite(READY, LOW);
- }
-
-
-
-void stopActuator() {
-
-   analogWrite(PWM0, 0);
-   analogWrite(PWM1, 0);
-   digitalWrite(READY, HIGH);
-
-
-
-}
-´´´
+```
 
 ![Diagrama do controlador PID](images/image.png)
 
